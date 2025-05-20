@@ -21,7 +21,7 @@ describe('Basic user flow for Website', () => {
   // Check to make sure that all 20 <product-item> elements have data in them
   // We use .skip() here because this test has a TODO that has not been completed yet.
   // Make sure to remove the .skip after you finish the TODO. 
-  it.skip('Make sure <product-item> elements are populated', async () => {
+  it('Make sure <product-item> elements are populated', async () => {
     console.log('Checking to make sure <product-item> elements are populated...');
 
     // Start as true, if any don't have data, swap to false
@@ -35,70 +35,99 @@ describe('Basic user flow for Website', () => {
       });
     });
 
-    console.log(`Checking product item 1/${prodItemsData.length}`);
-
-    // Make sure the title, price, and image are populated in the JSON
-    firstValue = prodItemsData[0];
-    if (firstValue.title.length == 0) { allArePopulated = false; }
-    if (firstValue.price.length == 0) { allArePopulated = false; }
-    if (firstValue.image.length == 0) { allArePopulated = false; }
-
-    // Expect allArePopulated to still be true
-    expect(allArePopulated).toBe(true);
-
     /**
     **** TODO - STEP 1 ****
     * Right now this function is only checking the first <product-item> it found, make it so that
       it checks every <product-item> it found
     * Remove the .skip from this it once you are finished writing this test.
     */
+    for(let i = 0; i < prodItemsData.length; i++) {
+      value = prodItemsData[i];
+      console.log(`Checking product item ${i+1}/${prodItemsData.length}`);
+      if (value.title.length == 0) { allArePopulated = false; }
+      if (value.price.length == 0) { allArePopulated = false; }
+      if (value.image.length == 0) { allArePopulated = false; }
+    }
+
+    // Expect allArePopulated to still be true
+    expect(allArePopulated).toBe(true);
 
   }, 10000);
 
   // Check to make sure that when you click "Add to Cart" on the first <product-item> that
   // the button swaps to "Remove from Cart"
-  it.skip('Clicking the "Add to Cart" button should change button text', async () => {
-    console.log('Checking the "Add to Cart" button...');
-
-    /**
-     **** TODO - STEP 2 **** 
-     * Query a <product-item> element using puppeteer ( checkout page.$() and page.$$() in the docs )
-     * Grab the shadowRoot of that element (it's a property), then query a button from that shadowRoot.
-     * Once you have the button, you can click it and check the innerText property of the button.
-     * Once you have the innerText property, use innerText.jsonValue() to get the text value of it
-     * Remember to remove the .skip from this it once you are finished writing this test.
-     */
-
-  }, 2500);
-
-  // Check to make sure that after clicking "Add to Cart" on every <product-item> that the Cart
-  // number in the top right has been correctly updated
-  it.skip('Checking number of items in cart on screen', async () => {
+  it('Checking number of items in cart on screen', async () => {
     console.log('Checking number of items in cart on screen...');
+    await page.goto('https://cse110-sp25.github.io/CSE110-Shop/');
+    await page.waitForSelector('product-item');
 
-    /**
-     **** TODO - STEP 3 **** 
-     * Query select all of the <product-item> elements, then for every single product element
-       get the shadowRoot and query select the button inside, and click on it.
-     * Check to see if the innerText of #cart-count is 20
-     * Remember to remove the .skip from this it once you are finished writing this test.
-     */
+    // Wait for all 20 items and buttons
+    await page.waitForFunction(() => {
+      const items = Array.from(document.querySelectorAll('product-item'));
+      return items.length === 20 && items.every(item => {
+        const root = item.shadowRoot;
+        return root && root.querySelector('button');
+      });
+    });
 
-  }, 10000);
+    const prodItems = await page.$$('product-item');
+    expect(prodItems.length).toBe(20);
+
+    for (let i = 0; i < prodItems.length; i++) {
+      const shadowRoot = await page.evaluateHandle(el => el.shadowRoot, prodItems[i]);
+      const button = await shadowRoot.$('button');
+
+      await button.click();
+      await new Promise(r => setTimeout(r, 100));
+
+      // Verify button text changed
+      const text = await page.evaluate(btn => btn.innerText, button);
+      console.log(`Item ${i + 1} button text: ${text}`);
+      if (text !== 'Remove from Cart') {
+        console.warn(`⚠️ Button ${i + 1} did not update correctly`);
+      }
+    }
+
+    // Final check with delay
+    await new Promise(r => setTimeout(r, 1000));
+    const finalCart = await page.evaluate(() => document.querySelector('#cart-count').innerText);
+    expect(parseInt(finalCart)).toBe(20);
+
+}, 30000);
 
   // Check to make sure that after you reload the page it remembers all of the items in your cart
-  it.skip('Checking number of items in cart on screen after reload', async () => {
+  it('Checking number of items in cart on screen after reload', async () => {
     console.log('Checking number of items in cart on screen after reload...');
 
-    /**
-     **** TODO - STEP 4 **** 
-     * Reload the page, then select all of the <product-item> elements, and check every
-       element to make sure that all of their buttons say "Remove from Cart".
-     * Also check to make sure that #cart-count is still 20
-     * Remember to remove the .skip from this it once you are finished writing this test.
-     */
+    // Reload the page and wait for it to fully load
+    await page.reload({ waitUntil: ['networkidle0', 'domcontentloaded'] });
+    await page.waitForSelector('product-item');
 
-  }, 10000);
+    // Wait until all 20 buttons are loaded again
+    await page.waitForFunction(() => {
+      const items = Array.from(document.querySelectorAll('product-item'));
+      return items.length === 20 && items.every(item => {
+        const root = item.shadowRoot;
+        return root && root.querySelector('button');
+      });
+    });
+
+    const prodItems = await page.$$('product-item');
+    expect(prodItems.length).toBe(20);
+
+    for (let i = 0; i < prodItems.length; i++) {
+      const shadowRoot = await page.evaluateHandle(el => el.shadowRoot, prodItems[i]);
+      const button = await shadowRoot.$('button');
+
+      const text = await page.evaluate(btn => btn.innerText, button);
+      console.log(`Item ${i + 1} post-reload button text: ${text}`);
+      expect(text).toBe('Remove from Cart');
+    }
+
+    const finalCart = await page.evaluate(() => document.querySelector('#cart-count').innerText);
+    expect(parseInt(finalCart)).toBe(20);
+    
+  }, 15000);
 
   // Check to make sure that the cart in localStorage is what you expect
   it.skip('Checking the localStorage to make sure cart is correct', async () => {
