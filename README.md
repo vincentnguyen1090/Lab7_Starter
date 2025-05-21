@@ -1,4 +1,4 @@
-Vincent Nguyen
+Vincent Nguyen, Phiroze Duggal
 
 2. Manually run them locally before pushing code
 I think runnning an automated tests manually locally before pushing the code in my Recipe project development pipeline would be the best case. This ensures any bugs and issues are caught before they reach the remote repo and impact other contributors. By doing so, it maintain code quality and not having major breaking changes. Setting up continuous integration will ensure the quality is still there.
